@@ -19,7 +19,6 @@
 
 #define LEADER_LED 7
 #define FOLLOWER_LED 6
-#define FINAL_LED 5
 
 #define LEADER_BTN 3
 #define FOLLOWER_BTN 2

@@ -24,14 +24,12 @@ void setup() {
 
   pinMode(LEADER_LED, OUTPUT);
   pinMode(FOLLOWER_LED, OUTPUT);
-  pinMode(FINAL_LED, OUTPUT);
 
   pinMode(LEADER_BTN, INPUT_PULLUP);
   pinMode(FOLLOWER_BTN, INPUT_PULLUP);
 
   digitalWrite(LEADER_LED, LOW);
   digitalWrite(FOLLOWER_LED, LOW);
-  digitalWrite(FINAL_LED, LOW);
 
   Serial1.begin(1000000);
   leaderBus.pSerial = &Serial1;
@@ -42,6 +40,7 @@ void setup() {
   for (int i = 0; i < numServos; i++) {
     int pos = leaderBus.ReadPos(servoIDs[i]);
     while (pos == -1) {
+      Serial.println("Looking for Leader");
       pos = leaderBus.ReadPos(servoIDs[i]);
     }
     leaderArm.setServoMinMax(i, pos);
@@ -49,6 +48,7 @@ void setup() {
   for (int i = 0; i < numServos; i++) {
     int pos = followerBus.ReadPos(servoIDs[i]);
     while (pos == -1) {
+      Serial.println("Looking for Follower");
       pos = followerBus.ReadPos(servoIDs[i]);
     }
     followerArm.setServoMinMax(i, pos);
@@ -63,8 +63,13 @@ void setup() {
 
 #define DEBUG 1
 
+bool leader_cal = false;
+bool follower_cal = false;
+byte state = LOW;
+
 void loop() {
-  // Serial.println("== Leader ==");
+  leader_cal = leaderArm.isCalibrated();
+  follower_cal = followerArm.isCalibrated();
   // while (DEBUG)
   // {
   //     int pos = leaderBus.ReadPos(servoIDs[4]);
@@ -79,14 +84,19 @@ void loop() {
   //   delay(200);
   // }
 
-  if (!leaderArm.isCalibrated() && !followerArm.isCalibrated()) {
-    byte ok = !digitalRead(LEADER_LED);
-    digitalWrite(LEADER_LED, ok);
-    digitalWrite(FOLLOWER_LED, ok);
-    digitalWrite(FINAL_LED, ok);
+
+
+  if (!leader_cal) {
+    state = !digitalRead(LEADER_LED);
+    digitalWrite(LEADER_LED, state);
+  } else if (!follower_cal && leader_cal) {
+    state = !digitalRead(FOLLOWER_LED);
+    digitalWrite(FOLLOWER_LED, state);
+    
   }
 
-  if (!leaderArm.isCalibrated()) {
+
+  if (!leader_cal) {
     Serial.println("== Leader ==");
     for (int i = 0; i < numServos; i++) {
       int pos = leaderBus.ReadPos(servoIDs[i]);
@@ -102,12 +112,13 @@ void loop() {
 
     if (digitalRead(LEADER_BTN) == LOW) {
       digitalWrite(LEADER_LED, HIGH);
+      digitalWrite(FOLLOWER_LED, LOW);
       leaderArm.setCalibrated();
       Serial.println("== Leader Arm Calibrated! ==");
     }
-    delay(500);
+    delay(256);
   }
-  else if (!followerArm.isCalibrated()) {
+  else if (!follower_cal) {
     Serial.println("== Follower ==");
     for (int i = 0; i < numServos; i++) {
       int pos = followerBus.ReadPos(servoIDs[i]);
@@ -126,10 +137,9 @@ void loop() {
       followerArm.setCalibrated();
       Serial.println("== Follower Arm Calibrated! ==");
     }
-    delay(500);
+    delay(250);
   }
-  else if (leaderArm.isCalibrated() && followerArm.isCalibrated()) {
-    digitalWrite(FINAL_LED, HIGH);
+  else if (leader_cal && follower_cal) {
     
     for (int i = 0; i < numServos; i++) {
       int leaderPos = leaderBus.ReadPos(servoIDs[i]);
